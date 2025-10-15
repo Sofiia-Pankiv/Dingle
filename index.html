@@ -1,27 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>1920x1080 Canvas Game</title>
-<style>
-html,body{height:100%;margin:0;background:#111;display:flex;align-items:center;justify-content:center}
-/* container keeps aspect ratio 1920x1080 and scales to fit viewport */
-.stage-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-.stage{position:relative;width:1920px;height:1080px;background:#000;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden}
-canvas{display:block}
-/* simple UI overlays */
-.ui{position:absolute;left:12px;top:12px;color:#fff;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;font-size:18px}
-.message{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;background:rgba(0,0,0,0.6);padding:18px 26px;border-radius:10px;font-family:Inter,Arial,sans-serif}
-.hint{position:absolute;left:12px;bottom:12px;color:#ddd;font-size:14px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dingle Game</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-<div class="stage-wrap">
-<div class="stage" id="stage">
-<canvas id="gameCanvas" width="1920" height="1080"></canvas>
-<div class="ui" id="ui">Loading...</div>
-<div class="hint">Controls: Arrow keys or WASD to move. Reach the glowing gate to start next game.</div>
-<div class="message" id="message" style="display:none"></div>
-</div>
-</div>
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+      <div class="ui" id="ui">Loading...</div>
+      <div class="message" id="message" style="display:none"></div>
+      <div class="hint">
+        Controls: Arrow keys or WASD to move.<br />
+        Touch a colored square to start a mini-game.
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

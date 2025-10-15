@@ -1,78 +1,181 @@
 const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const ui = document.getElementById('ui');
+const messageEl = document.getElementById('message');
 
-if (phase === 1) {
-const g = gateRect;
-ctx.save();
-ctx.shadowColor = 'rgba(255,200,80,0.9)';
-ctx.shadowBlur = 30;
-ctx.fillStyle = 'rgba(255,230,120,0.12)';
-ctx.fillRect(g.x, g.y, g.w, g.h);
-ctx.strokeStyle = 'rgba(255,230,120,0.9)';
-ctx.lineWidth = 4;
-ctx.strokeRect(g.x, g.y, g.w, g.h);
-ctx.restore();
-}
-if (phase === 2) {
-items.forEach(it => {
-if (!it.collected) {
-if (images.coin) ctx.drawImage(images.coin, it.x, it.y, it.w, it.h);
-else {
-ctx.beginPath();
-ctx.arc(it.x + it.w / 2, it.y + it.h / 2, it.w / 2, 0, Math.PI * 2);
-ctx.fillStyle = '#ffdd33';
-ctx.fill();
-ctx.strokeStyle = '#aa8800';
-ctx.stroke();
-}
-}
-});
-}
-if (images.player) ctx.drawImage(images.player, player.x, player.y, player.w, player.h);
-else {
-ctx.fillStyle = player.color;
-ctx.fillRect(player.x, player.y, player.w, player.h);
-}
-if (phase === 2) {
-const left = items.filter(i => !i.collected).length;
-ctx.fillStyle = 'rgba(0,0,0,0.4)';
-ctx.fillRect(14, 14, 240, 48);
-ctx.fillStyle = '#fff';
-ctx.font = '24px Arial';
-ctx.fillText('Items left: ' + left, 28, 46);
+let images = {};
+let phase = 0; // 0 = splash, 1 = explore, 2 = mini-game
+let lastTime = 0;
+let splashDuration = 3000;
+let keys = {};
+
+// player setup
+const player = { x: 900, y: 500, w: 60, h: 60, speed: 400, color: '#4af' };
+
+// “Squares” (gate zones) positioned similar to your image
+const gates = [
+  { x: 150, y: 200, w: 80, h: 140, color: '#e82be8' },
+  { x: 150, y: 650, w: 80, h: 140, color: '#f6d31a' },
+  { x: 1550, y: 200, w: 80, h: 140, color: '#e82be8' },
+  { x: 1550, y: 650, w: 80, h: 140, color: '#f6d31a' },
+  { x: 400, y: 400, w: 80, h: 140, color: '#ff2b2b' },
+  { x: 1400, y: 400, w: 80, h: 140, color: '#ff2b2b' }
+];
+
+// images to load
+const imgList = [
+    'assets/player.png',
+    'assets/Background1.png',
+    'assets/Background2.png'
+  ];
+  
+
+// simple image loader
+function loadImages(list, callback) {
+    let loaded = 0;
+    list.forEach(name => {
+      const img = new Image();
+      img.src = name;
+      img.onload = () => {
+        loaded++;
+        // extract just the file name without path and extension
+        const key = name.split('/').pop().split('.')[0];
+        images[key] = img;
+        if (loaded === list.length) callback();
+      };
+    });
+  }
+  
+
+// draw
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // background
+  if (phase === 0 && images.Background1)
+    ctx.drawImage(images.Background1, 0, 0, canvas.width, canvas.height);
+  else if (phase >= 1 && images.Background2)
+    ctx.drawImage(images.Background2, 0, 0, canvas.width, canvas.height);
+
+  // gates only in main phase
+  if (phase === 1) {
+    gates.forEach(g => {
+      ctx.save();
+      ctx.shadowColor = g.color;
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = g.color + '55';
+      ctx.fillRect(g.x, g.y, g.w, g.h);
+      ctx.strokeStyle = g.color;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(g.x, g.y, g.w, g.h);
+      ctx.restore();
+    });
+  }
+
+  // player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // mini-game overlay
+  if (phase === 2) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '64px Arial';
+    ctx.fillText('Mini-Game Started!', 600, 540);
+  }
 }
 
+// update movement & collision
+function update(dt) {
+  if (phase !== 1) return;
 
+  let vx = 0, vy = 0;
+  if (keys['ArrowUp'] || keys['w']) vy = -1;
+  if (keys['ArrowDown'] || keys['s']) vy = 1;
+  if (keys['ArrowLeft'] || keys['a']) vx = -1;
+  if (keys['ArrowRight'] || keys['d']) vx = 1;
 
+  const len = Math.hypot(vx, vy);
+  if (len) { vx /= len; vy /= len; }
+
+  player.x += vx * player.speed * dt;
+  player.y += vy * player.speed * dt;
+
+  // boundaries
+  player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+  player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
+
+  // collision with any gate
+  for (const g of gates) {
+    if (
+      player.x < g.x + g.w &&
+      player.x + player.w > g.x &&
+      player.y < g.y + g.h &&
+      player.y + player.h > g.y
+    ) {
+      startMiniGame();
+      break;
+    }
+  }
+}
+
+// loop
 function loop(ts) {
-if (!lastTime) lastTime = ts;
-const dt = Math.min(0.05, (ts - lastTime) / 1000);
-lastTime = ts;
-update(dt);
-draw();
-requestAnimationFrame(loop);
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min(0.05, (ts - lastTime) / 1000);
+  lastTime = ts;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(loop);
 }
 
+// transitions
+function startMainGame() {
+  phase = 1;
+  messageEl.style.display = 'none';
+}
 
+function startMiniGame() {
+  if (phase !== 1) return;
+  phase = 2;
+  messageEl.textContent = 'Mini-game started!';
+  messageEl.style.display = 'block';
+  // Placeholder mini-game: show message for 3 seconds then return
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+    phase = 1;
+    player.x = 900;
+    player.y = 500;
+  }, 3000);
+}
+
+// keyboard
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+// init
 loadImages(imgList, () => {
-ui.textContent = 'Preparing...';
-if (images.player) player.useSprite = true;
-phase = 0;
-ui.textContent = 'Splash - showing background';
-showMessage('Welcome! The game will start shortly...');
-setTimeout(() => { messageEl.style.display = 'none'; startGameA(); }, splashDuration);
-requestAnimationFrame(loop);
+  ui.textContent = 'Loading complete';
+  phase = 0;
+  messageEl.textContent = 'Welcome! The game will start shortly...';
+  messageEl.style.display = 'block';
+  setTimeout(startMainGame, splashDuration);
+  requestAnimationFrame(loop);
 });
 
-
+// responsive scaling
 (function makeResponsive() {
-const stage = document.getElementById('stage');
-function resize() {
-const maxW = window.innerWidth - 20;
-const maxH = window.innerHeight - 20;
-const scale = Math.min(maxW / 1920, maxH / 1080);
-stage.style.transform = `scale(${scale})`;
-stage.style.transformOrigin = 'center top';
-}
-window.addEventListener('resize', resize);
-resize();
+  const stage = document.getElementById('stage');
+  function resize() {
+    const maxW = window.innerWidth - 20;
+    const maxH = window.innerHeight - 20;
+    const scale = Math.min(maxW / 1920, maxH / 1080);
+    stage.style.transform = `scale(${scale})`;
+    stage.style.transformOrigin = 'center top';
+  }
+  window.addEventListener('resize', resize);
+  resize();
 })();
