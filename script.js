@@ -12,40 +12,33 @@ let keys = {};
 // player setup
 const player = { x: 900, y: 500, w: 60, h: 60, speed: 400, color: '#4af' };
 
-// “Squares” (gate zones) positioned similar to your image
+// Only one active (invisible) gate
 const gates = [
-  { x: 150, y: 200, w: 80, h: 140, color: '#e82be8' },
-  { x: 150, y: 650, w: 80, h: 140, color: '#f6d31a' },
-  { x: 1550, y: 200, w: 80, h: 140, color: '#e82be8' },
-  { x: 1550, y: 650, w: 80, h: 140, color: '#f6d31a' },
-  { x: 400, y: 400, w: 80, h: 140, color: '#ff2b2b' },
-  { x: 1400, y: 400, w: 80, h: 140, color: '#ff2b2b' }
+  { x: 105, y: 765, w: 80, h: 190, color: '#f6d31a' } // lowest-left gate
 ];
 
 // images to load
 const imgList = [
-    'assets/player.png',
-    'assets/Background1.png',
-    'assets/Background2.png'
-  ];
-  
+  'assets/player.png',
+  'assets/Background1.png',
+  'assets/Background2.png'
+];
 
 // simple image loader
 function loadImages(list, callback) {
-    let loaded = 0;
-    list.forEach(name => {
-      const img = new Image();
-      img.src = name;
-      img.onload = () => {
-        loaded++;
-        // extract just the file name without path and extension
-        const key = name.split('/').pop().split('.')[0];
-        images[key] = img;
-        if (loaded === list.length) callback();
-      };
-    });
-  }
-  
+  let loaded = 0;
+  list.forEach(name => {
+    const img = new Image();
+    img.src = name;
+    img.onload = () => {
+      loaded++;
+      // extract file name without path and extension
+      const key = name.split('/').pop().split('.')[0];
+      images[key] = img;
+      if (loaded === list.length) callback();
+    };
+  });
+}
 
 // draw
 function draw() {
@@ -57,24 +50,20 @@ function draw() {
   else if (phase >= 1 && images.Background2)
     ctx.drawImage(images.Background2, 0, 0, canvas.width, canvas.height);
 
-  // gates only in main phase
-  if (phase === 1) {
-    gates.forEach(g => {
-      ctx.save();
-      ctx.shadowColor = g.color;
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = g.color + '55';
-      ctx.fillRect(g.x, g.y, g.w, g.h);
-      ctx.strokeStyle = g.color;
-      ctx.lineWidth = 4;
-      ctx.strokeRect(g.x, g.y, g.w, g.h);
-      ctx.restore();
-    });
-  }
+  // gates are invisible (still active, just not drawn)
+  // no drawing code for gates here
 
-  // player
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
+  // player (only visible during main game or mini-game)
+  if (phase >= 1 && images.player) {
+    const scale = 0.7; // 70% size (30% smaller)
+    const width = images.player.width * scale;
+    const height = images.player.height * scale;
+    ctx.drawImage(images.player, player.x, player.y, width, height);
+  } else if (phase >= 1) {
+    // fallback square while image loads
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.w * 0.7, player.h * 0.7);
+  }
 
   // mini-game overlay
   if (phase === 2) {
@@ -97,7 +86,10 @@ function update(dt) {
   if (keys['ArrowRight'] || keys['d']) vx = 1;
 
   const len = Math.hypot(vx, vy);
-  if (len) { vx /= len; vy /= len; }
+  if (len) {
+    vx /= len;
+    vy /= len;
+  }
 
   player.x += vx * player.speed * dt;
   player.y += vy * player.speed * dt;
@@ -106,17 +98,15 @@ function update(dt) {
   player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 
-  // collision with any gate
-  for (const g of gates) {
-    if (
-      player.x < g.x + g.w &&
-      player.x + player.w > g.x &&
-      player.y < g.y + g.h &&
-      player.y + player.h > g.y
-    ) {
-      startMiniGame();
-      break;
-    }
+  // collision with the only gate
+  const g = gates[0];
+  if (
+    player.x < g.x + g.w &&
+    player.x + player.w > g.x &&
+    player.y < g.y + g.h &&
+    player.y + player.h > g.y
+  ) {
+    startMiniGame();
   }
 }
 
