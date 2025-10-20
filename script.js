@@ -16,12 +16,23 @@ let score = 0;
 let toys = [];
 
 // player setup
-const player = { x: 900, y: 500, w: 60, h: 60, speed: 400, color: '#4af' };
+const player = { x: 900, y: 500, w: 140, h: 180, speed: 400, color: '#4af' };
 
 // Only one active (invisible) gate
 const gates = [
   { x: 105, y: 765, w: 80, h: 190, color: '#f6d31a' }
 ];
+
+
+let gameTime = 50; // seconds per mini-game
+let timeLeft = gameTime;
+let timerActive = false;
+
+const bgMusic = new Audio('assets/sakura-117030.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 0.5; // adjust loudness
+
+
 
 // images to load
 const imgList = [
@@ -47,6 +58,13 @@ function loadImages(list, callback) {
       if (loaded === list.length) callback();
     };
   });
+    // Play background music when user interacts (required by browsers)
+    document.body.addEventListener('click', () => {
+      bgMusic.play();
+    }, { once: true });
+  
+    setTimeout(startMainGame, splashDuration);
+    requestAnimationFrame(loop);
 }
 
 // -------------------- HITBOX FUNCTIONS --------------------
@@ -93,11 +111,67 @@ function draw() {
     }
 
     // draw score at top-left
-    ctx.fillStyle = '#fff';
-    ctx.font = '48px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${score}`, 50, 60);
+// ------------------- FANTASY-STYLE SCORE & TIMER -------------------
+const gradientScore = ctx.createLinearGradient(0, 0, 0, 100);
+gradientScore.addColorStop(0, '#fdfbd3');   // light golden top
+gradientScore.addColorStop(1, '#c6a34f');   // deep golden bottom
+
+const gradientTime = ctx.createLinearGradient(0, 0, 0, 100);
+gradientTime.addColorStop(0, '#c4f5c0');   // mint top
+gradientTime.addColorStop(1, '#2e8b57');   // forest green bottom
+
+// Shadow glow (soft fantasy effect)
+ctx.shadowColor = 'rgba(255, 255, 200, 0.8)';
+ctx.shadowBlur = 15;
+
+// Draw Score
+ctx.font = 'bold 64px "Papyrus", "Cinzel Decorative", serif';
+ctx.textAlign = 'left';
+ctx.fillStyle = gradientScore;
+ctx.fillText(`🌸 Score: ${score}`, 80, 80);
+
+// Draw Timer (with magic frame)
+ctx.textAlign = 'right';
+ctx.fillStyle = gradientTime;
+ctx.fillText(`⏳ ${timeLeft}s left`, canvas.width - 80, 80);
+
+// Subtle sparkle effect behind text (optional)
+ctx.shadowColor = 'rgba(255,255,255,0.5)';
+ctx.shadowBlur = 5;
+ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+ctx.lineWidth = 2;
+ctx.strokeText(`🌸 Score: ${score}`, 80, 80);
+ctx.strokeText(`⏳ ${timeLeft}s left`, canvas.width - 80, 80);
+
+// Reset shadows for next draws
+ctx.shadowBlur = 0;
+
+// Draw glowing time bar
+const barWidth = 400;
+const barHeight = 20;
+const barX = canvas.width - barWidth - 80;
+const barY = 100;
+
+const timeRatio = timeLeft / gameTime;
+const barGradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+barGradient.addColorStop(0, '#6af55b');
+barGradient.addColorStop(1, '#1c7c33');
+
+ctx.fillStyle = 'rgba(255,255,255,0.2)';
+ctx.fillRect(barX, barY, barWidth, barHeight); // background
+ctx.fillStyle = barGradient;
+ctx.fillRect(barX, barY, barWidth * timeRatio, barHeight); // remaining time
+ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+ctx.lineWidth = 2;
+ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+
+
+
+
   }
+
+
 
   // draw player
   if (phase >= 1 && images.player) {
@@ -116,6 +190,9 @@ function draw() {
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.w * scale, player.h * scale);
   }
+
+    
+
 }
 
 // -------------------- UPDATE --------------------
@@ -211,6 +288,22 @@ function startMiniGame() {
   score = 0;
   toys = [];
 
+  timeLeft = gameTime;
+timerActive = true;
+const timerInterval = setInterval(() => {
+  if (timerActive) {
+    timeLeft -= 1;
+    if (timeLeft <= 0) {
+      timerActive = false;
+      clearInterval(timerInterval);
+      endMiniGame();
+    }
+  }
+}, 1000);
+
+
+
+  
   // Move player to bottom
   player.y = canvas.height - player.h;
   player.x = canvas.width / 2 - player.w / 2;
@@ -240,6 +333,15 @@ for (let i = 0; i < 6; i++) {
   }, 50000);
 }
 
+function endMiniGame() {
+  phase = 1;
+  messageEl.textContent = `You caught ${score} toys!`;
+  messageEl.style.display = 'block';
+  player.x = 900;
+  player.y = 500;
+  setTimeout(() => messageEl.style.display = 'none', 6000);
+}
+
 // -------------------- KEYBOARD --------------------
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
@@ -257,13 +359,30 @@ loadImages(imgList, () => {
 // -------------------- RESPONSIVE --------------------
 (function makeResponsive() {
   const stage = document.getElementById('stage');
+  const baseWidth = 1920;
+  const baseHeight = 1080;
+
   function resize() {
-    const maxW = window.innerWidth - 20;
-    const maxH = window.innerHeight - 20;
-    const scale = Math.min(maxW / 1920, maxH / 1080);
-    stage.style.transform = `scale(${scale})`;
-    stage.style.transformOrigin = 'center top';
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const windowRatio = windowWidth / windowHeight;
+    const stageRatio = baseWidth / baseHeight;
+
+    let scale, offsetX = 0, offsetY = 0;
+
+    if (windowRatio > stageRatio) {
+      // Window is wider than game — add vertical bars
+      scale = windowHeight / baseHeight;
+      offsetX = (windowWidth - baseWidth * scale) / 2;
+    } else {
+      // Window is taller — add horizontal bars
+      scale = windowWidth / baseWidth;
+      offsetY = (windowHeight - baseHeight * scale) / 2;
+    }
+
+    stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
   }
+
   window.addEventListener('resize', resize);
   resize();
 })();
