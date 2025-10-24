@@ -10,9 +10,37 @@
 <body>
   <div class="stage-wrap">
     <div class="stage" id="stage">
+<div id="startScreen" style="
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 100;
+">
+  ▶️ Click to Start
+</div>
+
+<video id="introVideo" width="100%" style="display: none;" playsinline>
+  <source src="assets/IMG_0089.mp4" type="video/mp4">
+</video>
+
+
+
       <canvas id="gameCanvas" width="1920" height="1080"></canvas>
       <div class="ui" id="ui">Loading...</div>
       <div class="message" id="message" style="display:none"></div>
+      <div class="result-screen" id="resultScreen" style="display:none">
+  <div class="result-box">
+    <p id="resultText">You caught 0 toys!</p>
+    <button id="playAgainBtn">Play Again</button>
+    <button id="goBackBtn">Go Back</button>
+  </div>
+</div>
       <div class="hint">
         Controls: Arrow keys or WASD to move.<br />
         Touch a colored square to start a mini-game.
